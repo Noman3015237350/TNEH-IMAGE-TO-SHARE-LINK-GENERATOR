@@ -1,39 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Image Share Link Generator</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TNEH Image Share Link Generator - Free Image Hosting</title>
+    <meta name="description" content="Upload images instantly and get shareable links. Free image hosting with permanent storage. No registration required.">
+    <meta name="keywords" content="image share, link generator, image hosting, free upload, share image">
+    <meta name="author" content="TNEH">
+    <meta property="og:title" content="TNEH Image Share Link Generator">
+    <meta property="og:description" content="Upload images and get instant shareable links">
+    <meta property="og:type" content="website">
+    
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
+        
+        /* মেইন কন্টেইনার */
         .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* হেডার সেকশন */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 16px;
+        }
+        
+        /* অ্যাড স্পেস টপ */
+        .ad-top {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            text-align: center;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* আপলোড কার্ড */
+        .upload-card {
             background: white;
             border-radius: 20px;
             padding: 40px;
-            max-width: 600px;
-            width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #333;
-            font-size: 28px;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-        }
+        
         #dropZone {
             border: 2px dashed #ccc;
             border-radius: 10px;
@@ -43,28 +85,34 @@
             transition: all 0.3s ease;
             background: #fafafa;
         }
+        
         #dropZone:hover {
             border-color: #667eea;
             background: #f5f3ff;
         }
+        
         #dropZone.drag-over {
             border-color: #667eea;
             background: #ede9fe;
         }
+        
         .upload-icon {
             font-size: 48px;
             margin-bottom: 10px;
         }
+        
         #preview {
             margin: 20px 0;
             text-align: center;
         }
+        
         #preview img {
             max-width: 100%;
             max-height: 300px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        
         .result {
             margin-top: 20px;
             padding: 20px;
@@ -73,14 +121,17 @@
             border-radius: 10px;
             display: none;
         }
+        
         .result a {
             color: #16a34a;
             word-break: break-all;
             text-decoration: none;
         }
+        
         .result a:hover {
             text-decoration: underline;
         }
+        
         button {
             background: #667eea;
             color: white;
@@ -92,122 +143,354 @@
             margin-top: 10px;
             transition: background 0.3s;
         }
+        
         button:hover {
             background: #5a67d8;
         }
+        
         .loading {
             display: none;
             text-align: center;
             margin: 20px 0;
             color: #667eea;
         }
+        
         .error {
             background: #fee2e2;
             border-color: #fecaca;
             color: #dc2626;
         }
+        
+        /* মিডল অ্যাড */
+        .ad-middle {
+            background: white;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            text-align: center;
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* ফিচার সেকশন */
+        .features {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .features h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .feature-item {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .feature-item h4 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .feature-item p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* সাইড অ্যাড (ডেস্কটপের জন্য) */
+        .ad-sidebar {
+            display: none;
+        }
+        
+        /* ফুটার */
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            padding: 20px;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* রেস্পন্সিভ */
+        @media (min-width: 1200px) {
+            body {
+                padding: 20px 40px;
+            }
+            
+            .main-wrapper {
+                display: flex;
+                gap: 20px;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+            
+            .content {
+                flex: 2;
+            }
+            
+            .ad-sidebar {
+                display: block;
+                flex: 1;
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                height: fit-content;
+                position: sticky;
+                top: 20px;
+            }
+            
+            .container {
+                max-width: 100%;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .upload-card {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+        }
+        
+        .qr-button {
+            background: #10b981;
+            margin-left: 10px;
+        }
+        
+        .qr-button:hover {
+            background: #059669;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📸 TNEH Image Share Link Generator</h1>
-        <div class="subtitle">Upload an image and get a shareable link</div>
-        
-        <div id="dropZone">
-            <div class="upload-icon">📷</div>
-            <p>Drag & drop an image here or click to upload</p>
-            <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<div class="main-wrapper">
+    <div class="content">
+        <div class="container">
+            <!-- হেডার -->
+            <div class="header">
+                <div class="logo">📸</div>
+                <h1>TNEH Image Share Link Generator</h1>
+                <div class="subtitle">Upload any image and get a shareable link instantly</div>
+            </div>
+            
+            <!-- টপ অ্যাড -->
+            <div class="ad-top">
+                <script async="async" data-cfasync="false" src="https://pl29530667.effectivecpmnetwork.com/58c064f54200c7488703ed403a922ac5/invoke.js"></script>
+                <div id="container-58c064f54200c7488703ed403a922ac5"></div>
+            </div>
+            
+            <!-- আপলোড কার্ড -->
+            <div class="upload-card">
+                <div id="dropZone">
+                    <div class="upload-icon">📷</div>
+                    <p>Drag & drop an image here or click to upload</p>
+                    <p style="font-size: 12px; color: #999; margin-top: 10px;">Supported: JPEG, PNG, GIF, WebP (Max 10MB)</p>
+                    <input type="file" id="fileInput" accept="image/*" style="display:none">
+                </div>
+                
+                <div id="preview"></div>
+                <div class="loading" id="loading">
+                    <div>⏳ Uploading... Please wait</div>
+                    <div style="font-size: 12px; margin-top: 5px;">Processing your image</div>
+                </div>
+                <div id="result" class="result"></div>
+            </div>
+            
+            <!-- মিডল অ্যাড -->
+            <div class="ad-middle">
+                <script src="https://pl29530624.effectivecpmnetwork.com/6b/fe/a3/6bfea37dfde9b6b010abf7ccc57c202a.js"></script>
+            </div>
+            
+            <!-- ফিচার সেকশন -->
+            <div class="features">
+                <h3>✨ Features</h3>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <h4>Instant Upload</h4>
+                        <p>Upload images in seconds</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔗</div>
+                        <h4>Shareable Links</h4>
+                        <p>Get permanent shareable URLs</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📱</div>
+                        <h4>Mobile Friendly</h4>
+                        <p>Works on all devices</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🆓</div>
+                        <h4>100% Free</h4>
+                        <p>No registration required</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ফুটার -->
+            <div class="footer">
+                <p>&copy; 2024 TNEH Image Share Link Generator | <a href="/">Home</a> | <a href="#" onclick="alert('Contact: @TNEH on Telegram')">Contact</a></p>
+                <p style="font-size: 12px; margin-top: 10px;">Fast & secure image hosting service</p>
+            </div>
         </div>
-        
-        <div id="preview"></div>
-        <div class="loading" id="loading">⏳ Uploading... Please wait</div>
-        <div id="result" class="result"></div>
     </div>
+    
+    <!-- সাইডবার অ্যাড (ডেস্কটপ) -->
+    <div class="ad-sidebar">
+        <div style="text-align: center; padding: 20px;">
+            <p style="color: #999; margin-bottom: 10px;">Advertisement</p>
+            <script async="async" data-cfasync="false" src="https://pl29530667.effectivecpmnetwork.com/58c064f54200c7488703ed403a922ac5/invoke.js"></script>
+            <div id="container-sidebar"></div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const preview = document.getElementById('preview');
-        const result = document.getElementById('result');
-        const loading = document.getElementById('loading');
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const result = document.getElementById('result');
+    const loading = document.getElementById('loading');
 
-        dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleFile(e.dataTransfer.files[0]);
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+        handleFile(e.target.files[0]);
+    });
+
+    async function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+            return;
+        }
         
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-        
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            handleFile(e.dataTransfer.files[0]);
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            handleFile(e.target.files[0]);
-        });
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File too large! Maximum size is 10MB');
+            return;
+        }
 
-        async function handleFile(file) {
-            if (!file || !file.type.startsWith('image/')) {
-                alert('Please select a valid image file');
-                return;
-            }
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-            };
-            reader.readAsDataURL(file);
-
-            // Upload
-            loading.style.display = 'block';
-            result.style.display = 'none';
+        // Upload
+        loading.style.display = 'block';
+        result.style.display = 'none';
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
             
-            const formData = new FormData();
-            formData.append('image', file);
+            const data = await response.json();
             
-            try {
-                // সঠিক API endpoint এ কল করছি
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    result.style.display = 'block';
-                    result.className = 'result';
-                    result.innerHTML = `
-                        <strong>✅ Shareable Link Created!</strong><br><br>
-                        <a href="${data.url}" target="_blank">${data.url}</a><br><br>
-                        <button onclick="copyToClipboard('${data.url}')">📋 Copy Link</button>
-                        <button onclick="window.open('${data.url}', '_blank')">🔗 Open Link</button>
-                    `;
-                } else {
-                    throw new Error(data.error || 'Upload failed');
-                }
-            } catch (error) {
-                console.error('Upload error:', error);
+            if (data.success) {
                 result.style.display = 'block';
-                result.className = 'result error';
-                result.innerHTML = `<strong>❌ Error:</strong> ${error.message}<br><br>
-                <button onclick="location.reload()">🔄 Try Again</button>`;
-            } finally {
-                loading.style.display = 'none';
+                result.className = 'result';
+                result.innerHTML = `
+                    <strong>✅ Shareable Link Created Successfully!</strong><br><br>
+                    <a href="${data.url}" target="_blank" id="shareLink">${data.url}</a><br><br>
+                    <button onclick="copyToClipboard('${data.url}')">📋 Copy Link</button>
+                    <button class="qr-button" onclick="generateQR('${data.url}')">📱 Generate QR Code</button>
+                    <button onclick="shareOnWhatsApp('${data.url}')">💬 Share on WhatsApp</button>
+                `;
+                
+                // Trigger ad refresh if available
+                if (typeof adsbygoogle !== 'undefined') {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                }
+            } else {
+                throw new Error(data.error || 'Upload failed');
             }
+        } catch (error) {
+            console.error('Upload error:', error);
+            result.style.display = 'block';
+            result.className = 'result error';
+            result.innerHTML = `<strong>❌ Upload Failed!</strong><br><br>${error.message}<br><br>
+            <button onclick="location.reload()">🔄 Try Again</button>`;
+        } finally {
+            loading.style.display = 'none';
         }
+    }
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            alert('✅ Link copied to clipboard!');
-        }
-    </script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text);
+        alert('✅ Link copied to clipboard!');
+    }
+    
+    function generateQR(url) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+        window.open(qrUrl, '_blank', 'width=250,height=250');
+    }
+    
+    function shareOnWhatsApp(url) {
+        const whatsappUrl = `https://wa.me/?text=Check out this image: ${encodeURIComponent(url)}`;
+        window.open(whatsappUrl, '_blank');
+    }
+</script>
+
+<!-- বটম অ্যাড (ফুটারের কাছে) -->
+<div style="text-align: center; margin-top: 20px; padding: 10px;">
+    <small style="color: rgba(255,255,255,0.5);">Advertisements</small>
+</div>
+
+<script>
+    // পেজ লোড হলে কনসোলে মেসেজ
+    console.log('TNEH Image Share Link Generator - Ready to upload!');
+    
+    // টেলিগ্রাম বোট লিংক শো (ঐচ্ছিক)
+    const showBotLink = () => {
+        console.log('🤖 Telegram Bot: @TNEH_Image_Share_Bot');
+    };
+    showBotLink();
+</script>
+
 </body>
 </html>
