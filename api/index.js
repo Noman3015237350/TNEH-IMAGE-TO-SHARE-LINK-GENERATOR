@@ -13,7 +13,7 @@ const app = express();
 // ========== কনফিগারেশন ==========
 const BASE_URL = 'https://tnehimagetosharelinkgenerator.onrender.com';
 const BOT_TOKEN = '8883310302:AAE7E4RXdhErGPJ1om-CLeCeoXSnbbdzQu4';
-const BOT_USERNAME = 'TNEH_Image_Share_Bot'; // আপনার বটের ইউজারনেম
+const BOT_USERNAME = 'tneh_image_bot'; // আপনার বটের ইউজারনেম
 
 // ফোল্ডার তৈরি
 const uploadsDir = path.join(__dirname, '..', 'uploads');
