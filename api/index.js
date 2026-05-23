@@ -18,7 +18,7 @@ const BOT_TOKEN = '8883310302:AAE7E4RXdhErGPJ1om-CLeCeoXSnbbdzQu4';
 const publicDir = path.join(__dirname, '..', 'public');
 if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
 
-// JSON ডাটাবেস (শুধু মেটাডাটা)
+// JSON ডাটাবেস
 let images = {};
 const dbFile = path.join(__dirname, '..', 'images.json');
 if (fs.existsSync(dbFile)) {
@@ -28,6 +28,8 @@ if (fs.existsSync(dbFile)) {
         images = {};
     }
 }
+
+console.log(`📸 Loaded ${Object.keys(images).length} images from database`);
 
 // ========== মিডলওয়্যার ==========
 app.use(express.json({ limit: '50mb' }));
@@ -51,7 +53,6 @@ import fetch from 'node-fetch';
 const { default: TelegramBot } = await import('node-telegram-bot-api');
 
 let bot;
-let telegramChannelId = '-1003465154233'; // আপনার চ্যানেলের আইডি (নিচে সেটাপ দেখুন)
 
 try {
     bot = new TelegramBot(BOT_TOKEN, { 
@@ -67,34 +68,6 @@ try {
         console.log('GetMe error:', err.message);
     });
     
-    // ========== চ্যানেল সেটাপ হেল্প ==========
-    bot.onText(/\/setchannel/, async (msg) => {
-        const chatId = msg.chat.id;
-        await bot.sendMessage(chatId, `
-📢 *How to setup Telegram Storage:*
-
-1. Create a private channel in Telegram
-2. Add your bot as admin to the channel
-3. Forward any message from channel to bot
-4. Bot will auto-detect channel ID
-
-*Current Status:* ${telegramChannelId ? '✅ Configured' : '❌ Not configured'}
-
-Type /getchannel to get channel info
-        `, { parse_mode: 'Markdown' });
-    });
-    
-    // ========== ফরোয়ার্ড মেসেজ থেকে চ্যানেল আইডি পাওয়া ==========
-    bot.on('channel_post', async (msg) => {
-        const channelId = msg.chat.id;
-        telegramChannelId = channelId;
-        
-        // চ্যানেল আইডি সেভ
-        fs.writeFileSync('channel_id.txt', channelId.toString());
-        
-        console.log(`📢 Channel ID saved: ${channelId}`);
-    });
-    
     // ========== স্টার্ট ==========
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
@@ -104,22 +77,18 @@ Type /getchannel to get channel info
 🎉 *Hello ${name}!* 🎉
 
 *TNEH Image Share Bot*
-🐘 *Now with Telegram Storage!*
+🐘 *Telegram Permanent Storage*
 
-*Why Telegram Storage?*
+*Features:*
 ✅ Images stored FOREVER
-✅ No expiration
-✅ High quality preserved
+✅ Original quality
+✅ Fast loading
 ✅ Free unlimited storage
-
-*How to use:*
-Simply send me any photo.
 
 *Commands:*
 /start - Welcome
 /help - Help
 /stats - Your stats
-/upload - Upload image
 /mylinks - Your uploaded links
 
 *Send me an image now!* 🚀
@@ -131,34 +100,31 @@ Simply send me any photo.
         const chatId = msg.chat.id;
         
         bot.sendMessage(chatId, `
-📖 *Help Guide - Telegram Storage*
+📖 *Help Guide - Permanent Storage*
 
 *How it works:*
-1. You send an image to bot
-2. Bot saves image to Telegram's cloud
-3. Image stored FOREVER (free!)
-4. You get permanent shareable link
+1. Send image to bot
+2. Bot saves to Telegram cloud
+3. Get permanent link
+4. Share anywhere!
 
-*Benefits of Telegram Storage:*
+*Benefits:*
 • ✅ Never expires
 • ✅ Original quality
 • ✅ Fast loading
 • ✅ Free unlimited storage
 
 *Commands:*
-/start - Restart bot
+/start - Main menu
 /help - This help
 /stats - Your statistics
-/mylinks - All your uploaded images
-/upload - Upload new image
-
-*Website:* ${BASE_URL}
+/mylinks - All your images
 
 Send a photo now! 📸
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== মাইলিংকস - সব লিংক দেখাবে ==========
+    // ========== মাইলিংকস ==========
     bot.onText(/\/mylinks/, (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -170,11 +136,11 @@ Send a photo now! 📸
         } else {
             let message = `📸 *Your ${userImages.length} Image(s):*\n\n`;
             userImages.slice(-10).reverse().forEach((img, index) => {
-                message += `${index + 1}. [Link](${BASE_URL}/share/${img.id}) - ${new Date(img.createdAt).toLocaleDateString()}\n`;
+                message += `${index + 1}. ${BASE_URL}/share/${img.id}\n`;
             });
             message += `\n💡 Click any link to view/share!`;
             
-            bot.sendMessage(chatId, message, { parse_mode: 'Markdown', disable_web_page_preview: true });
+            bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
         }
     });
     
@@ -191,17 +157,13 @@ Send a photo now! 📸
 
 Total uploads: *${userImages.length}*
 Total views: *${totalViews}*
-Storage: *Telegram Cloud (unlimited)*
+Storage: *Telegram Cloud (Permanent)*
 
-*Storage Type:* ✅ Permanent
-*Quality:* ✅ Original
-*Expiry:* ❌ Never
-
-Keep sharing! 🎉
+✅ Images will NEVER expire!
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== ফটো হ্যান্ডেল (টেলিগ্রাম স্টোরেজ) ==========
+    // ========== ফটো হ্যান্ডেল ==========
     bot.on('photo', async (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -218,29 +180,23 @@ Keep sharing! 🎉
             const photo = msg.photo[msg.photo.length - 1];
             const file = await bot.getFile(photo.file_id);
             
+            // ফাইল ডাউনলোড করে বেস64 তে নিন
+            const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            const response = await fetch(fileUrl);
+            const buffer = await response.buffer();
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:image/jpeg;base64,${base64}`;
+            
             // ইউনিক আইডি
             const imageId = uuidv4();
             
-            // টেলিগ্রামে ফাইল ফরোয়ার্ড (স্থায়ী স্টোরেজের জন্য)
-            let telegramFileId = photo.file_id;
-            
-            // যদি চ্যানেল থাকে, সেখানে ফরোয়ার্ড করুন
-            if (telegramChannelId && telegramChannelId !== '-1001234567890') {
-                try {
-                    const forwarded = await bot.forwardMessage(telegramChannelId, chatId, msg.message_id);
-                    telegramFileId = forwarded.photo[forwarded.photo.length - 1].file_id;
-                    console.log(`📤 Forwarded to channel: ${telegramChannelId}`);
-                } catch (e) {
-                    console.log('Forward failed, using original file_id');
-                }
-            }
-            
-            // মেটাডাটা সেভ (শুধু টেলিগ্রাম ফাইল আইডি)
+            // মেটাডাটা সেভ (বেস64 ডাটা সহ)
             images[imageId] = {
                 id: imageId,
                 userId: userId,
                 username: username,
-                telegramFileId: telegramFileId,
+                dataUrl: dataUrl,
+                telegramFileId: photo.file_id,
                 views: 0,
                 size: file.file_size,
                 createdAt: new Date().toISOString(),
@@ -252,25 +208,19 @@ Keep sharing! 🎉
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
             await bot.sendMessage(chatId, `
-✅ *Upload Successful! (Telegram Storage)*
+✅ *Upload Successful!*
 
 🔗 *Your Permanent Link:*
 ${shareUrl}
 
 📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
-💾 *Storage:* Telegram Cloud (FOREVER)
-⏰ *Expiry:* Never
+💾 *Storage:* Telegram Cloud
+⏰ *Expiry:* NEVER
 
-*Benefits:*
-• Image stored permanently
-• High quality preserved
-• Fast loading
-• Free unlimited storage
-
-Share this link - it will work FOREVER! 🚀
+*Share this link - it will work FOREVER!* 🚀
             `, { parse_mode: 'Markdown' });
             
-            console.log(`✅ Saved with Telegram storage: ${shareUrl}`);
+            console.log(`✅ Saved: ${shareUrl}`);
             
         } catch (error) {
             console.error('Photo error:', error);
@@ -297,26 +247,23 @@ Please try again.
             await bot.sendMessage(chatId, '⏳ *Saving to Telegram cloud...*', { parse_mode: 'Markdown' });
             
             const file = await bot.getFile(doc.file_id);
+            
+            // ফাইল ডাউনলোড
+            const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            const response = await fetch(fileUrl);
+            const buffer = await response.buffer();
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:${doc.mime_type};base64,${base64}`;
+            
             const imageId = uuidv4();
-            
-            let telegramFileId = doc.file_id;
-            
-            // চ্যানেলে ফরোয়ার্ড
-            if (telegramChannelId && telegramChannelId !== '-1001234567890') {
-                try {
-                    const forwarded = await bot.forwardMessage(telegramChannelId, chatId, msg.message_id);
-                    telegramFileId = forwarded.document.file_id;
-                } catch (e) {
-                    console.log('Forward failed');
-                }
-            }
             
             images[imageId] = {
                 id: imageId,
                 userId: msg.from.id,
                 username: msg.from.username || msg.from.first_name,
                 filename: doc.file_name,
-                telegramFileId: telegramFileId,
+                dataUrl: dataUrl,
+                telegramFileId: doc.file_id,
                 mimeType: doc.mime_type,
                 size: file.file_size,
                 views: 0,
@@ -329,7 +276,7 @@ Please try again.
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
             await bot.sendMessage(chatId, `
-✅ *Upload Successful! (Telegram Storage)*
+✅ *Upload Successful!*
 
 🔗 *Your Permanent Link:*
 ${shareUrl}
@@ -351,26 +298,63 @@ This image will NEVER expire! 🎉
         console.log('Polling error:', error.code, error.message);
     });
     
-    console.log('✅ Bot with Telegram Storage is ready!');
+    console.log('✅ Bot with Permanent Storage is ready!');
     
 } catch (error) {
     console.error('Bot error:', error.message);
 }
 
-// ========== ইমেজ সার্ভ করার API (টেলিগ্রাম থেকে) ==========
-app.get('/share/:id', async (req, res) => {
+// ========== ইমেজ সার্ভ করার API ==========
+app.get('/share/:id', (req, res) => {
     const { id } = req.params;
     const image = images[id];
     
+    console.log(`🔍 Looking for image: ${id}`);
+    console.log(`📸 Available images: ${Object.keys(images).length}`);
+    
     if (!image) {
+        console.log(`❌ Image not found: ${id}`);
         return res.status(404).send(`
             <!DOCTYPE html>
             <html>
-            <head><title>Image Not Found</title></head>
-            <body style="text-align:center;padding:50px;font-family:Arial">
-                <h1>❌ Image Not Found</h1>
-                <p>The image doesn't exist or has been removed.</p>
-                <a href="/">Go to Homepage</a>
+            <head>
+                <title>Image Not Found</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        padding: 50px;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        min-height: 100vh;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                    }
+                    .card {
+                        background: white;
+                        border-radius: 20px;
+                        padding: 40px;
+                        max-width: 400px;
+                        margin: 0 auto;
+                    }
+                    button {
+                        background: #667eea;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        margin-top: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>❌ Image Not Found</h1>
+                    <p>The image you're looking for doesn't exist.</p>
+                    <button onclick="window.location.href='/'">Go to Homepage</button>
+                </div>
             </body>
             </html>
         `);
@@ -380,18 +364,15 @@ app.get('/share/:id', async (req, res) => {
     image.views = (image.views || 0) + 1;
     fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
     
-    // টেলিগ্রাম থেকে ইমেজ ইউআরএল তৈরি
-    const telegramImageUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${
-        image.telegramFileId
-    }`;
+    console.log(`✅ Serving image: ${id} - ${image.username} - Views: ${image.views}`);
     
     // HTML পেজ
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>${image.username || 'User'}'s Shared Image (Telegram Storage)</title>
-            <meta property="og:image" content="${telegramImageUrl}">
+            <title>${image.username || 'User'}'s Shared Image</title>
+            <meta property="og:image" content="${image.dataUrl}">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
                 * {
@@ -461,7 +442,7 @@ app.get('/share/:id', async (req, res) => {
         </head>
         <body>
             <div class="container">
-                <img src="${telegramImageUrl}" alt="Shared Image" onerror="this.src='${image.dataUrl || telegramImageUrl}'">
+                <img src="${image.dataUrl}" alt="Shared Image">
                 <div class="info">
                     <p>📸 Shared by: ${image.username || 'Anonymous'}</p>
                     <p>👁️ Views: ${image.views}</p>
@@ -473,6 +454,7 @@ app.get('/share/:id', async (req, res) => {
                 <input type="text" id="linkInput" value="${BASE_URL}/share/${image.id}" readonly>
                 <button onclick="copyLink()">📋 Copy Link</button>
                 <button onclick="downloadImage()">💾 Download</button>
+                <button onclick="shareOnWhatsApp()">📱 WhatsApp</button>
                 <button onclick="window.location.href='/'">🏠 Home</button>
             </div>
             <script>
@@ -489,43 +471,17 @@ app.get('/share/:id', async (req, res) => {
                     link.download = '${image.filename || 'image.jpg'}';
                     link.click();
                 }
+                function shareOnWhatsApp() {
+                    const url = window.location.href;
+                    window.open('https://wa.me/?text=' + encodeURIComponent('Check out this image: ' + url), '_blank');
+                }
             </script>
         </body>
         </html>
     `);
 });
 
-// টেলিগ্রাম থেকে সরাসরি ইমেজ সার্ভ
-app.get('/telegram-image/:fileId', async (req, res) => {
-    const { fileId } = req.params;
-    const url = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileId}`;
-    
-    try {
-        const response = await fetch(url);
-        const buffer = await response.buffer();
-        res.set('Content-Type', 'image/jpeg');
-        res.send(buffer);
-    } catch (error) {
-        res.status(404).send('Image not found');
-    }
-});
-
-// ========== অন্যান্য API ==========
-
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        time: new Date().toISOString(),
-        images: Object.keys(images).length,
-        storage: 'Telegram Cloud',
-        permanent: true
-    });
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
-});
-
+// API - সব ইমেজ
 app.get('/api/images', (req, res) => {
     const list = Object.values(images).map(img => ({
         id: img.id,
@@ -544,6 +500,7 @@ app.get('/api/images', (req, res) => {
     });
 });
 
+// API - এক ইমেজ
 app.get('/api/image/:id', (req, res) => {
     const image = images[req.params.id];
     if (!image) return res.status(404).json({ error: 'Not found' });
@@ -555,15 +512,64 @@ app.get('/api/image/:id', (req, res) => {
         views: image.views,
         storage: 'telegram',
         permanent: true,
-        telegramFileId: image.telegramFileId,
         createdAt: image.createdAt
     });
+});
+
+// আপলোড API
+app.post('/api/upload', upload.single('image'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image' });
+        }
+        
+        const imageId = uuidv4();
+        const base64 = req.file.buffer.toString('base64');
+        const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+        
+        images[imageId] = {
+            id: imageId,
+            dataUrl: dataUrl,
+            filename: req.file.originalname,
+            mimeType: req.file.mimetype,
+            views: 0,
+            createdAt: new Date().toISOString(),
+            storage: 'api',
+            permanent: true
+        };
+        
+        fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
+        
+        res.json({
+            success: true,
+            shareUrl: `${BASE_URL}/share/${imageId}`,
+            imageId: imageId
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// হেলথ চেক
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        time: new Date().toISOString(),
+        images: Object.keys(images).length,
+        storage: 'Telegram Cloud',
+        permanent: true
+    });
+});
+
+// হোম পেজ
+app.get('/', (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on ${BASE_URL}`);
-    console.log(`📸 Total images: ${Object.keys(images).length}`);
+    console.log(`📸 Total images stored: ${Object.keys(images).length}`);
     console.log(`💾 Storage: Telegram Cloud (Permanent)`);
 });
 
