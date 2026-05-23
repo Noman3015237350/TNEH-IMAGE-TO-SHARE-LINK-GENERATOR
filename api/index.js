@@ -12,8 +12,6 @@ const app = express();
 
 // ========== কনফিগারেশন ==========
 const BASE_URL = 'https://tnehimagetosharelinkgenerator.onrender.com';
-const BOT_TOKEN = '8883310302:AAE7E4RXdhErGPJ1om-CLeCeoXSnbbdzQu4';
-const BOT_USERNAME = 'tneh_image_bot'; // আপনার বটের ইউজারনেম
 
 // ফোল্ডার তৈরি
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -33,13 +31,10 @@ if (fs.existsSync(dbFile)) {
     }
 }
 
-console.log(`📸 Loaded ${Object.keys(images).length} images`);
-
 // ========== মিডলওয়্যার ==========
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(publicDir));
-app.use('/uploads', express.static(uploadsDir));
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -54,6 +49,8 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ========== টেলিগ্রাম বোট ==========
 import fetch from 'node-fetch';
+
+const BOT_TOKEN = '8883310302:AAE7E4RXdhErGPJ1om-CLeCeoXSnbbdzQu4';
 
 const { default: TelegramBot } = await import('node-telegram-bot-api');
 
@@ -84,16 +81,14 @@ try {
 *TNEH Image Share Bot*
 
 📸 *How to use:*
-Send me any image, I'll give you 2 links:
+Simply send me any photo.
 
-1️⃣ *Telegram Link* - View directly in Telegram
-2️⃣ *Web Link* - Share anywhere on internet
+I will give you a permanent shareable link!
 
 *Commands:*
 /start - Welcome
 /help - Help
 /stats - Your stats
-/mylinks - Your uploaded links
 
 *Send me an image now!* 🚀
         `, { parse_mode: 'Markdown' });
@@ -106,48 +101,18 @@ Send me any image, I'll give you 2 links:
         bot.sendMessage(chatId, `
 📖 *Help Guide*
 
-*Two Types of Links:*
+*Steps:*
+1️⃣ Send me any photo
+2️⃣ Wait 2-3 seconds
+3️⃣ Get your shareable link
 
-🔗 *Telegram Link:*
-\`https://t.me/${BOT_USERNAME}?start=image_ID\`
-- View directly in Telegram
-- Fast loading
-- Native experience
+*Supported:* All image formats
+*Size limit:* 10MB
 
-🌐 *Web Link:*
-\`${BASE_URL}/share/image_ID\`
-- Share anywhere
-- Open in browser
-- Download option
-
-*Commands:*
-/start - Main menu
-/help - This help
-/stats - Your statistics
-/mylinks - All your images
+*Website:* ${BASE_URL}
 
 Send a photo now! 📸
         `, { parse_mode: 'Markdown' });
-    });
-    
-    // ========== মাইলিংকস ==========
-    bot.onText(/\/mylinks/, (msg) => {
-        const chatId = msg.chat.id;
-        const userId = msg.from.id;
-        
-        const userImages = Object.values(images).filter(img => img.userId === userId);
-        
-        if (userImages.length === 0) {
-            bot.sendMessage(chatId, '📭 *No images found!*\n\nSend me an image to get started.', { parse_mode: 'Markdown' });
-        } else {
-            let message = `📸 *Your ${userImages.length} Image(s):*\n\n`;
-            userImages.slice(-10).reverse().forEach((img, index) => {
-                message += `${index + 1}. *Telegram:* t.me/${BOT_USERNAME}?start=${img.id}\n`;
-                message += `   *Web:* ${BASE_URL}/share/${img.id}\n\n`;
-            });
-            
-            bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-        }
     });
     
     // ========== স্ট্যাটস ==========
@@ -164,60 +129,11 @@ Send a photo now! 📸
 Total uploads: *${userImages.length}*
 Total views: *${totalViews}*
 
-*Link Types:*
-• Telegram links: ${userImages.length}
-• Web links: ${userImages.length}
-
 Keep sharing! 🎉
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== ডিপ লিংক হ্যান্ডেল (t.me/bot?start=image_id) ==========
-    bot.onText(/\/start (.+)/, async (msg, match) => {
-        const chatId = msg.chat.id;
-        const imageId = match[1];
-        const image = images[imageId];
-        
-        if (!image) {
-            return bot.sendMessage(chatId, '❌ Image not found or expired!');
-        }
-        
-        // ভিউ আপডেট
-        image.views = (image.views || 0) + 1;
-        fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
-        
-        // ইমেজ দেখান সরাসরি টেলিগ্রামে
-        if (image.telegramFileId) {
-            // টেলিগ্রাম ফাইল আইডি থাকলে সরাসরি পাঠান
-            await bot.sendPhoto(chatId, image.telegramFileId, {
-                caption: `
-📸 *Image from ${image.username || 'User'}*
-
-🔗 *Web Link:* ${BASE_URL}/share/${imageId}
-📊 *Views:* ${image.views}
-📅 *Uploaded:* ${new Date(image.createdAt).toLocaleDateString()}
-
-*Share this image anywhere!*
-                `,
-                parse_mode: 'Markdown'
-            });
-        } else if (image.dataUrl) {
-            // বেস৬৪ ডাটা থাকলে সেটা পাঠান
-            await bot.sendPhoto(chatId, image.dataUrl, {
-                caption: `
-📸 *Image from ${image.username || 'User'}*
-
-🔗 *Web Link:* ${BASE_URL}/share/${imageId}
-📊 *Views:* ${image.views}
-
-*Share this link!*
-                `,
-                parse_mode: 'Markdown'
-            });
-        }
-    });
-    
-    // ========== ফটো হ্যান্ডেল ==========
+    // ========== ফটো হ্যান্ডেল (শুধুমাত্র ওয়েবসাইট লিংক) ==========
     bot.on('photo', async (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -226,72 +142,71 @@ Keep sharing! 🎉
         console.log(`📸 Photo from: ${username}`);
         
         try {
-            await bot.sendMessage(chatId, '⏳ *Processing...*', { parse_mode: 'Markdown' });
+            // ওয়েটিং মেসেজ
+            const waitMsg = await bot.sendMessage(chatId, '⏳ *Processing your image...*', { 
+                parse_mode: 'Markdown' 
+            });
             
             // ফটো ডাউনলোড
             const photo = msg.photo[msg.photo.length - 1];
             const file = await bot.getFile(photo.file_id);
-            
-            // ফাইল ডাউনলোড করে লোকালে সেভ
             const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            
             const response = await fetch(fileUrl);
             const buffer = await response.buffer();
+            
+            // ইউনিক আইডি
+            const imageId = uuidv4();
+            const filename = `${imageId}.jpg`;
+            
+            // বেস৬৪ তে কনভার্ট
             const base64 = buffer.toString('base64');
             const dataUrl = `data:image/jpeg;base64,${base64}`;
             
-            // লোকাল ফাইল সেভ
-            const imageId = uuidv4();
-            const localFilename = `${imageId}.jpg`;
-            const localPath = path.join(uploadsDir, localFilename);
-            fs.writeFileSync(localPath, buffer);
-            
-            // ডাটাবেসে সেভ
+            // JSON এ সেভ
             images[imageId] = {
                 id: imageId,
                 userId: userId,
                 username: username,
+                filename: filename,
                 dataUrl: dataUrl,
-                localPath: `/uploads/${localFilename}`,
-                telegramFileId: photo.file_id,
                 views: 0,
-                size: file.file_size,
-                createdAt: new Date().toISOString(),
-                storage: 'both' // টেলিগ্রাম + লোকাল
+                createdAt: new Date().toISOString()
             };
             
             fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
             
-            // দুই ধরনের লিংক
-            const telegramLink = `https://t.me/${BOT_USERNAME}?start=${imageId}`;
-            const webLink = `${BASE_URL}/share/${imageId}`;
+            // শুধুমাত্র ওয়েবসাইট লিংক (একটা URL)
+            const shareUrl = `${BASE_URL}/share/${imageId}`;
             
+            // ওয়েটিং মেসেজ ডিলিট করে নতুন মেসেজ দিবে
+            await bot.deleteMessage(chatId, waitMsg.message_id);
+            
+            // শুধু একটি URL সহ সাকসেস মেসেজ
             await bot.sendMessage(chatId, `
 ✅ *Upload Successful!*
 
-*🔗 TWO LINKS GENERATED:*
-
-1️⃣ *Telegram Link* (View in Telegram):
-\`${telegramLink}\`
-
-2️⃣ *Web Link* (Share anywhere):
-\`${webLink}\`
+🔗 *Your Shareable Link:*
+${shareUrl}
 
 📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
-💾 *Storage:* Telegram + Server (Double backup)
 
-*Click Telegram link to view now!* 🚀
-            `, { parse_mode: 'Markdown' });
+💡 *Click the link to view and share!*
+
+Share this link with anyone! 🚀
+            `, { parse_mode: 'Markdown', disable_web_page_preview: false });
             
-            // ইমেজ প্রিভিউ পাঠান
-            await bot.sendPhoto(chatId, dataUrl, {
-                caption: `🖼️ Your image is ready!\n\n📱 Telegram: ${telegramLink}\n🌐 Web: ${webLink}`
-            });
-            
-            console.log(`✅ Saved: ${imageId}`);
+            console.log(`✅ Success: ${shareUrl}`);
             
         } catch (error) {
             console.error('Photo error:', error);
-            await bot.sendMessage(chatId, `❌ Upload Failed! ${error.message}`);
+            await bot.sendMessage(chatId, `
+❌ *Upload Failed!*
+
+Error: ${error.message}
+
+Please try again with a different image.
+            `, { parse_mode: 'Markdown' });
         }
     });
     
@@ -305,20 +220,19 @@ Keep sharing! 🎉
         }
         
         try {
-            await bot.sendMessage(chatId, '⏳ *Processing...*', { parse_mode: 'Markdown' });
+            const waitMsg = await bot.sendMessage(chatId, '⏳ *Processing...*', { parse_mode: 'Markdown' });
             
             const file = await bot.getFile(doc.file_id);
             const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
+            
             const response = await fetch(fileUrl);
             const buffer = await response.buffer();
-            const base64 = buffer.toString('base64');
-            const dataUrl = `data:${doc.mime_type};base64,${base64}`;
             
             const imageId = uuidv4();
             const ext = doc.mime_type.split('/')[1];
-            const localFilename = `${imageId}.${ext}`;
-            const localPath = path.join(uploadsDir, localFilename);
-            fs.writeFileSync(localPath, buffer);
+            const filename = `${imageId}.${ext}`;
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:${doc.mime_type};base64,${base64}`;
             
             images[imageId] = {
                 id: imageId,
@@ -326,35 +240,29 @@ Keep sharing! 🎉
                 username: msg.from.username || msg.from.first_name,
                 filename: doc.file_name,
                 dataUrl: dataUrl,
-                localPath: `/uploads/${localFilename}`,
-                telegramFileId: doc.file_id,
                 mimeType: doc.mime_type,
                 size: file.file_size,
                 views: 0,
-                createdAt: new Date().toISOString(),
-                storage: 'both'
+                createdAt: new Date().toISOString()
             };
             
             fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
             
-            const telegramLink = `https://t.me/${BOT_USERNAME}?start=${imageId}`;
-            const webLink = `${BASE_URL}/share/${imageId}`;
+            // শুধুমাত্র ওয়েবসাইট লিংক
+            const shareUrl = `${BASE_URL}/share/${imageId}`;
+            
+            await bot.deleteMessage(chatId, waitMsg.message_id);
             
             await bot.sendMessage(chatId, `
 ✅ *Upload Successful!*
 
-*🔗 TWO LINKS GENERATED:*
-
-1️⃣ *Telegram Link*:
-\`${telegramLink}\`
-
-2️⃣ *Web Link*:
-\`${webLink}\`
+🔗 *Your Link:*
+${shareUrl}
 
 📄 *File:* ${doc.file_name}
 📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
 
-*Share these links anywhere!* 🎉
+Share this link! 🚀
             `, { parse_mode: 'Markdown' });
             
         } catch (error) {
@@ -363,17 +271,32 @@ Keep sharing! 🎉
         }
     });
     
+    // এরর হ্যান্ডেলিং
     bot.on('polling_error', (error) => {
         console.log('Polling error:', error.code, error.message);
     });
     
-    console.log('✅ Bot with dual storage is ready!');
+    console.log('✅ Bot is ready! Send images to your bot.');
     
 } catch (error) {
     console.error('Bot error:', error.message);
 }
 
-// ========== ওয়েব শেয়ার লিংক ==========
+// ========== API এন্ডপয়েন্ট ==========
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        time: new Date().toISOString(),
+        images: Object.keys(images).length
+    });
+});
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+// শেয়ার লিংক পেজ
 app.get('/share/:id', (req, res) => {
     const { id } = req.params;
     const image = images[id];
@@ -382,43 +305,10 @@ app.get('/share/:id', (req, res) => {
         return res.status(404).send(`
             <!DOCTYPE html>
             <html>
-            <head>
-                <title>Image Not Found</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        text-align: center;
-                        padding: 50px;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        min-height: 100vh;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .card {
-                        background: white;
-                        border-radius: 20px;
-                        padding: 40px;
-                        max-width: 400px;
-                    }
-                    button {
-                        background: #667eea;
-                        color: white;
-                        border: none;
-                        padding: 10px 20px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        margin-top: 20px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <h1>❌ Image Not Found</h1>
-                    <p>The image doesn't exist.</p>
-                    <button onclick="window.location.href='/'">Go Home</button>
-                </div>
+            <head><title>Image Not Found</title></head>
+            <body style="text-align:center;padding:50px;font-family:Arial">
+                <h1>❌ Image Not Found</h1>
+                <a href="/">Go to Homepage</a>
             </body>
             </html>
         `);
@@ -428,18 +318,19 @@ app.get('/share/:id', (req, res) => {
     image.views = (image.views || 0) + 1;
     fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
     
-    const telegramLink = `https://t.me/${BOT_USERNAME}?start=${id}`;
-    const imageUrl = image.localPath ? `${BASE_URL}${image.localPath}` : image.dataUrl;
-    
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
             <title>${image.username || 'User'}'s Shared Image</title>
-            <meta property="og:image" content="${imageUrl}">
+            <meta property="og:image" content="${image.dataUrl}">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
                 body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -459,20 +350,13 @@ app.get('/share/:id', (req, res) => {
                 }
                 img {
                     max-width: 100%;
-                    max-height: 60vh;
+                    max-height: 70vh;
                     border-radius: 10px;
                 }
                 .info {
                     margin-top: 15px;
                     color: #666;
                     font-size: 14px;
-                }
-                .link-box {
-                    background: #f5f5f5;
-                    padding: 10px;
-                    border-radius: 8px;
-                    margin: 10px 0;
-                    word-break: break-all;
                 }
                 button {
                     background: #667eea;
@@ -482,64 +366,45 @@ app.get('/share/:id', (req, res) => {
                     border-radius: 8px;
                     cursor: pointer;
                     margin: 5px;
+                    font-size: 14px;
                 }
-                .telegram-btn {
-                    background: #0088cc;
+                button:hover {
+                    background: #5a67d8;
                 }
                 input {
                     width: 100%;
                     padding: 10px;
-                    margin-top: 10px;
+                    margin-top: 15px;
                     border: 1px solid #ddd;
                     border-radius: 8px;
                     text-align: center;
+                    font-size: 12px;
                 }
             </style>
         </head>
         <body>
             <div class="container">
-                <img src="${imageUrl}" alt="Shared Image">
+                <img src="${image.dataUrl}" alt="Shared Image">
                 <div class="info">
                     <p>📸 Shared by: ${image.username || 'Anonymous'}</p>
                     <p>👁️ Views: ${image.views}</p>
                     <p>📅 ${new Date(image.createdAt).toLocaleString()}</p>
                 </div>
-                
-                <div class="link-box">
-                    <strong>📱 Telegram Link:</strong><br>
-                    <input type="text" value="${telegramLink}" readonly id="telegramLink">
-                    <button onclick="copyTelegramLink()">📋 Copy Telegram Link</button>
-                </div>
-                
-                <div class="link-box">
-                    <strong>🌐 Web Link:</strong><br>
-                    <input type="text" value="${BASE_URL}/share/${id}" readonly id="webLink">
-                    <button onclick="copyWebLink()">📋 Copy Web Link</button>
-                </div>
-                
-                <button class="telegram-btn" onclick="window.open('${telegramLink}', '_blank')">
-                    📱 Open in Telegram
-                </button>
+                <input type="text" id="linkInput" value="${BASE_URL}/share/${image.id}" readonly>
+                <button onclick="copyLink()">📋 Copy Link</button>
                 <button onclick="downloadImage()">💾 Download</button>
-                <button onclick="window.location.href='/'>🏠 Home</button>
+                <button onclick="window.location.href='/'">🏠 Home</button>
             </div>
             <script>
-                function copyTelegramLink() {
-                    const input = document.getElementById('telegramLink');
+                function copyLink() {
+                    const input = document.getElementById('linkInput');
                     input.select();
                     document.execCommand('copy');
-                    alert('✅ Telegram link copied!');
-                }
-                function copyWebLink() {
-                    const input = document.getElementById('webLink');
-                    input.select();
-                    document.execCommand('copy');
-                    alert('✅ Web link copied!');
+                    alert('✅ Link copied to clipboard!');
                 }
                 function downloadImage() {
-                    const img = document.querySelector('img');
                     const link = document.createElement('a');
-                    link.href = img.src;
+                    link.href = '${image.dataUrl}';
                     link.download = '${image.filename || 'image.jpg'}';
                     link.click();
                 }
@@ -549,25 +414,11 @@ app.get('/share/:id', (req, res) => {
     `);
 });
 
-// API এন্ডপয়েন্ট
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        time: new Date().toISOString(),
-        images: Object.keys(images).length,
-        storage: 'Telegram + Local'
-    });
-});
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
-});
-
+// API - সব ইমেজ
 app.get('/api/images', (req, res) => {
     const list = Object.values(images).map(img => ({
         id: img.id,
-        telegramLink: `https://t.me/${BOT_USERNAME}?start=${img.id}`,
-        webLink: `${BASE_URL}/share/${img.id}`,
+        url: `${BASE_URL}/share/${img.id}`,
         username: img.username,
         views: img.views,
         createdAt: img.createdAt
@@ -575,35 +426,50 @@ app.get('/api/images', (req, res) => {
     res.json({ count: list.length, images: list });
 });
 
+// API - এক ইমেজ
+app.get('/api/image/:id', (req, res) => {
+    const { id } = req.params;
+    const image = images[id];
+    
+    if (!image) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    
+    res.json({
+        id: image.id,
+        url: `${BASE_URL}/share/${image.id}`,
+        username: image.username,
+        views: image.views,
+        createdAt: image.createdAt
+    });
+});
+
+// আপলোড API
 app.post('/api/upload', upload.single('image'), (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ error: 'No image' });
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image' });
+        }
         
         const imageId = uuidv4();
-        const ext = path.extname(req.file.originalname);
-        const filename = `${imageId}${ext}`;
-        const localPath = path.join(uploadsDir, filename);
-        fs.writeFileSync(localPath, req.file.buffer);
-        
         const base64 = req.file.buffer.toString('base64');
         const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
         
         images[imageId] = {
             id: imageId,
             dataUrl: dataUrl,
-            localPath: `/uploads/${filename}`,
             filename: req.file.originalname,
+            mimeType: req.file.mimetype,
             views: 0,
             createdAt: new Date().toISOString(),
-            storage: 'local'
+            source: 'api'
         };
         
         fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
         
         res.json({
             success: true,
-            telegramLink: `https://t.me/${BOT_USERNAME}?start=${imageId}`,
-            webLink: `${BASE_URL}/share/${imageId}`,
+            shareUrl: `${BASE_URL}/share/${imageId}`,
             imageId: imageId
         });
     } catch (error) {
@@ -614,8 +480,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on ${BASE_URL}`);
-    console.log(`📸 Total images: ${Object.keys(images).length}`);
-    console.log(`🤖 Bot: t.me/${BOT_USERNAME}`);
+    console.log(`📸 Total images stored: ${Object.keys(images).length}`);
 });
 
 export default app;
