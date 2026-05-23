@@ -47,17 +47,15 @@ app.use((req, res, next) => {
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ========== টেলিগ্রাম বোট (সিম্পল, বাটন ছাড়া) ==========
-let bot;
-
-// নোড-ফেচ ইম্পোর্ট
+// ========== টেলিগ্রাম বোট (পুরোপুরি ফিক্সড) ==========
 import fetch from 'node-fetch';
 
-// বোট টোকেন
 const BOT_TOKEN = '8883310302:AAE7E4RXdhErGPJ1om-CLeCeoXSnbbdzQu4';
 
-// বোট ইমপোর্ট (ডায়নামিক)
+// ডায়নামিক ইম্পোর্ট
 const { default: TelegramBot } = await import('node-telegram-bot-api');
+
+let bot;
 
 try {
     bot = new TelegramBot(BOT_TOKEN, { 
@@ -65,15 +63,15 @@ try {
         request: { timeout: 60000 }
     });
     
-    console.log('🤖 Bot starting...');
+    console.log('🤖 Bot initializing...');
     
     bot.getMe().then(botInfo => {
-        console.log(`✅ Bot @${botInfo.username} is ready!`);
+        console.log(`✅ Bot @${botInfo.username} is running!`);
     }).catch(err => {
-        console.log('Bot error:', err.message);
+        console.log('GetMe error:', err.message);
     });
     
-    // ========== স্টার্ট কমান্ড ==========
+    // ========== স্টার্ট ==========
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         const name = msg.from.first_name || msg.from.username;
@@ -84,20 +82,20 @@ try {
 Welcome to *TNEH Image Share Bot*
 
 📸 *How to use:*
-Simply send me any photo or image file.
+Just send me any photo.
 
 I will give you a permanent shareable link!
 
 *Commands:*
-/start - Welcome message
+/start - Welcome
 /help - Help guide
-/stats - Your statistics
+/stats - Your stats
 
-*Ready? Send me an image now!* 🚀
+*Send me an image now!* 🚀
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== হেল্প কমান্ড ==========
+    // ========== হেল্প ==========
     bot.onText(/\/help/, (msg) => {
         const chatId = msg.chat.id;
         
@@ -105,14 +103,11 @@ I will give you a permanent shareable link!
 📖 *Help Guide*
 
 *Steps:*
-1️⃣ Send me any photo
-2️⃣ Wait 2-3 seconds
-3️⃣ Get your shareable link
+1. Send me any photo
+2. Wait a moment
+3. Get your shareable link
 
-*Supported formats:*
-• JPEG, PNG, GIF, WebP
-• Any image file
-
+*Supported:* All image formats
 *Size limit:* 10MB
 
 *Website:* ${BASE_URL}
@@ -121,7 +116,7 @@ Send a photo now! 📸
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== স্ট্যাটস কমান্ড ==========
+    // ========== স্ট্যাটস ==========
     bot.onText(/\/stats/, (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -132,14 +127,14 @@ Send a photo now! 📸
         bot.sendMessage(chatId, `
 📊 *Your Statistics*
 
-Total uploads: ${userImages.length}
-Total views: ${totalViews}
+Total uploads: *${userImages.length}*
+Total views: *${totalViews}*
 
 Keep sharing! 🎉
         `, { parse_mode: 'Markdown' });
     });
     
-    // ========== ফটো হ্যান্ডেল ==========
+    // ========== ফটো হ্যান্ডেল (সবচেয়ে সিম্পল) ==========
     bot.on('photo', async (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -148,15 +143,16 @@ Keep sharing! 🎉
         console.log(`📸 Photo from: ${username}`);
         
         try {
-            // প্রসেসিং মেসেজ
-            await bot.sendMessage(chatId, '⏳ *Processing your image...*', { parse_mode: 'Markdown' });
+            // ওয়েটিং মেসেজ
+            const waitMsg = await bot.sendMessage(chatId, '⏳ *Processing your image...*', { 
+                parse_mode: 'Markdown' 
+            });
             
-            // সবচেয়ে বড় সাইজের ফটো নিন
+            // ফটো ডাউনলোড
             const photo = msg.photo[msg.photo.length - 1];
             const file = await bot.getFile(photo.file_id);
             const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
             
-            // ডাউনলোড
             const response = await fetch(fileUrl);
             const buffer = await response.buffer();
             
@@ -164,11 +160,11 @@ Keep sharing! 🎉
             const imageId = uuidv4();
             const filename = `${imageId}.jpg`;
             
-            // বেস64
+            // বেস64 তে কনভার্ট
             const base64 = buffer.toString('base64');
             const dataUrl = `data:image/jpeg;base64,${base64}`;
             
-            // সেভ
+            // JSON এ সেভ
             images[imageId] = {
                 id: imageId,
                 userId: userId,
@@ -183,25 +179,28 @@ Keep sharing! 🎉
             
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
-            // সাকসেস মেসেজ
+            // ওয়েটিং মেসেজ ডিলিট
+            await bot.deleteMessage(chatId, waitMsg.message_id);
+            
+            // শুধু টেক্সট মেসেজ (ফটো ছাড়া)
             await bot.sendMessage(chatId, `
 ✅ *Upload Successful!*
 
 🔗 *Your Shareable Link:*
-${shareUrl}
+\`${shareUrl}\`
 
 📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
-👁️ *Link ID:* ${imageId.substring(0, 8)}...
+👁️ *Views:* 0
 
-Click the link to view and share anywhere!
+💡 *Click the link to view and share!*
+
+*Quick actions:*
+• Copy the link
+• Share anywhere
+• Anyone can view
             `, { parse_mode: 'Markdown' });
             
-            // থাম্বনেইল পাঠান
-            await bot.sendPhoto(chatId, shareUrl, {
-                caption: `🖼️ Your shared image\n🔗 ${shareUrl}`
-            });
-            
-            console.log(`✅ Link created: ${shareUrl}`);
+            console.log(`✅ Success: ${shareUrl}`);
             
         } catch (error) {
             console.error('Photo error:', error);
@@ -220,13 +219,12 @@ Please try again or send a different image.
         const chatId = msg.chat.id;
         const doc = msg.document;
         
-        // চেক করুন ইমেজ কিনা
         if (!doc.mime_type || !doc.mime_type.startsWith('image/')) {
-            return bot.sendMessage(chatId, '❌ Please send an image file (JPEG, PNG, GIF, WebP)');
+            return bot.sendMessage(chatId, '❌ Please send an image file (JPEG, PNG, GIF)');
         }
         
         try {
-            await bot.sendMessage(chatId, '⏳ *Processing your image...*', { parse_mode: 'Markdown' });
+            const waitMsg = await bot.sendMessage(chatId, '⏳ *Processing...*', { parse_mode: 'Markdown' });
             
             const file = await bot.getFile(doc.file_id);
             const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
@@ -236,7 +234,6 @@ Please try again or send a different image.
             
             const imageId = uuidv4();
             const ext = doc.mime_type.split('/')[1];
-            const filename = `${imageId}.${ext}`;
             const base64 = buffer.toString('base64');
             const dataUrl = `data:${doc.mime_type};base64,${base64}`;
             
@@ -246,8 +243,6 @@ Please try again or send a different image.
                 username: msg.from.username || msg.from.first_name,
                 filename: doc.file_name,
                 dataUrl: dataUrl,
-                mimeType: doc.mime_type,
-                size: file.file_size,
                 views: 0,
                 createdAt: new Date().toISOString()
             };
@@ -256,21 +251,23 @@ Please try again or send a different image.
             
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
+            await bot.deleteMessage(chatId, waitMsg.message_id);
+            
             await bot.sendMessage(chatId, `
 ✅ *Upload Successful!*
 
-🔗 *Your Shareable Link:*
-${shareUrl}
+🔗 *Your Link:*
+\`${shareUrl}\`
 
 📄 *File:* ${doc.file_name}
 📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
 
-Share this link with anyone! 🚀
+Share this link! 🚀
             `, { parse_mode: 'Markdown' });
             
         } catch (error) {
             console.error('Document error:', error);
-            await bot.sendMessage(chatId, '❌ Upload failed! Please try again.');
+            await bot.sendMessage(chatId, '❌ Upload failed! Try again.');
         }
     });
     
@@ -279,49 +276,39 @@ Share this link with anyone! 🚀
         console.log('Polling error:', error.code, error.message);
     });
     
-    console.log('✅ Bot is ready to receive images!');
+    console.log('✅ Bot ready!');
     
 } catch (error) {
-    console.error('Bot initialization error:', error.message);
+    console.error('Bot error:', error.message);
 }
 
-// ========== API এন্ডপয়েন্ট ==========
+// ========== API ==========
 
-// হেলথ চেক
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'ok', 
         time: new Date().toISOString(),
-        images: Object.keys(images).length,
-        bot: bot ? 'running' : 'starting'
+        images: Object.keys(images).length
     });
 });
 
-// হোম পেজ
 app.get('/', (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// শেয়ার লিংক পেজ
 app.get('/share/:id', (req, res) => {
     const { id } = req.params;
     const image = images[id];
     
     if (!image) {
         return res.status(404).send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Image Not Found</title></head>
-            <body style="text-align:center;padding:50px;font-family:Arial">
-                <h1>❌ Image Not Found</h1>
-                <p>The image you're looking for doesn't exist.</p>
-                <a href="/">Go to Homepage</a>
-            </body>
-            </html>
+            <html><body style="text-align:center;padding:50px">
+            <h1>❌ Image Not Found</h1>
+            <a href="/">Go Home</a>
+            </body></html>
         `);
     }
     
-    // ভিউ আপডেট
     image.views = (image.views || 0) + 1;
     fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
     
@@ -329,13 +316,12 @@ app.get('/share/:id', (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>${image.username || 'User'}'s Shared Image</title>
-            <meta property="og:image" content="${image.dataUrl}">
+            <title>Shared Image</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
+                *{margin:0;padding:0;box-sizing:border-box;}
                 body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-family: Arial, sans-serif;
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     min-height: 100vh;
                     display: flex;
@@ -343,7 +329,7 @@ app.get('/share/:id', (req, res) => {
                     align-items: center;
                     padding: 20px;
                 }
-                .container {
+                .card {
                     background: white;
                     border-radius: 20px;
                     padding: 20px;
@@ -353,13 +339,8 @@ app.get('/share/:id', (req, res) => {
                 }
                 img {
                     max-width: 100%;
-                    max-height: 70vh;
+                    max-height: 60vh;
                     border-radius: 10px;
-                }
-                .info {
-                    margin-top: 15px;
-                    color: #666;
-                    font-size: 14px;
                 }
                 button {
                     background: #667eea;
@@ -369,10 +350,6 @@ app.get('/share/:id', (req, res) => {
                     border-radius: 8px;
                     cursor: pointer;
                     margin: 5px;
-                    font-size: 14px;
-                }
-                button:hover {
-                    background: #5a67d8;
                 }
                 input {
                     width: 100%;
@@ -385,26 +362,25 @@ app.get('/share/:id', (req, res) => {
             </style>
         </head>
         <body>
-            <div class="container">
-                <img src="${image.dataUrl}" alt="Shared Image">
-                <div class="info">
-                    <p>📸 Shared by: ${image.username || 'Anonymous'}</p>
-                    <p>👁️ Views: ${image.views}</p>
-                    <p>📅 ${new Date(image.createdAt).toLocaleString()}</p>
+            <div class="card">
+                <img src="${image.dataUrl}" alt="Image">
+                <div style="margin-top:15px;color:#666;">
+                    <p>📸 ${image.username || 'Anonymous'}</p>
+                    <p>👁️ ${image.views} views</p>
                 </div>
-                <input type="text" id="linkInput" value="${BASE_URL}/share/${image.id}" readonly>
-                <button onclick="copyLink()">📋 Copy Link</button>
-                <button onclick="downloadImage()">💾 Download</button>
+                <input type="text" id="link" value="${BASE_URL}/share/${id}" readonly>
+                <button onclick="copyLink()">📋 Copy</button>
+                <button onclick="download()">💾 Download</button>
                 <button onclick="window.location.href='/'">🏠 Home</button>
             </div>
             <script>
                 function copyLink() {
-                    const input = document.getElementById('linkInput');
+                    const input = document.getElementById('link');
                     input.select();
                     document.execCommand('copy');
-                    alert('✅ Link copied to clipboard!');
+                    alert('Link copied!');
                 }
-                function downloadImage() {
+                function download() {
                     const link = document.createElement('a');
                     link.href = '${image.dataUrl}';
                     link.download = '${image.filename || 'image.jpg'}';
@@ -416,42 +392,30 @@ app.get('/share/:id', (req, res) => {
     `);
 });
 
-// API - সব ইমেজ
 app.get('/api/images', (req, res) => {
     const list = Object.values(images).map(img => ({
         id: img.id,
         url: `${BASE_URL}/share/${img.id}`,
         username: img.username,
-        views: img.views,
-        createdAt: img.createdAt
+        views: img.views
     }));
     res.json({ count: list.length, images: list });
 });
 
-// API - এক ইমেজ
 app.get('/api/image/:id', (req, res) => {
-    const { id } = req.params;
-    const image = images[id];
-    
-    if (!image) {
-        return res.status(404).json({ error: 'Not found' });
-    }
-    
+    const image = images[req.params.id];
+    if (!image) return res.status(404).json({ error: 'Not found' });
     res.json({
         id: image.id,
         url: `${BASE_URL}/share/${image.id}`,
         username: image.username,
-        views: image.views,
-        createdAt: image.createdAt
+        views: image.views
     });
 });
 
-// আপলোড API
 app.post('/api/upload', upload.single('image'), (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No image' });
-        }
+        if (!req.file) return res.status(400).json({ error: 'No image' });
         
         const imageId = uuidv4();
         const base64 = req.file.buffer.toString('base64');
@@ -469,8 +433,7 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
         
         res.json({
             success: true,
-            shareUrl: `${BASE_URL}/share/${imageId}`,
-            imageId: imageId
+            shareUrl: `${BASE_URL}/share/${imageId}`
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -479,9 +442,8 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`✅ Server: http://localhost:${PORT}`);
-    console.log(`🌐 Live: ${BASE_URL}`);
-    console.log(`📸 Images: ${Object.keys(images).length}`);
+    console.log(`✅ Server: ${BASE_URL}`);
+    console.log(`📸 Total images: ${Object.keys(images).length}`);
 });
 
 export default app;
