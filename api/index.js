@@ -49,58 +49,158 @@ app.use((req, res, next) => {
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// ========== টেলিগ্রাম বোট ==========
+// ========== টেলিগ্রাম বোট (বাটন সহ) ==========
 let bot;
 try {
     bot = new TelegramBot(BOT_TOKEN, { polling: true });
     console.log('✅ Telegram Bot started successfully');
     
-    // বোট কমান্ড
+    // মেইন মেনু বাটন
+    const mainMenu = {
+        reply_markup: {
+            keyboard: [
+                [{ text: '📸 Upload Image' }, { text: '📊 My Stats' }],
+                [{ text: '🌐 Open Website' }, { text: '❓ Help' }],
+                [{ text: 'ℹ️ About' }]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: false
+        }
+    };
+    
+    // ইনলাইন বাটন (মেসেজের ভিতরে)
+    const inlineButtons = {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '📸 Upload Image', callback_data: 'upload_guide' },
+                    { text: '📊 My Stats', callback_data: 'show_stats' }
+                ],
+                [
+                    { text: '🌐 Open Website', url: BASE_URL },
+                    { text: '🔗 Share Bot', callback_data: 'share_bot' }
+                ],
+                [
+                    { text: '❓ Help', callback_data: 'help_guide' },
+                    { text: 'ℹ️ About', callback_data: 'about_bot' }
+                ]
+            ]
+        }
+    };
+    
+    // স্টার্ট কমান্ড - বাটন সহ
     bot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
+        const userName = msg.from.first_name || msg.from.username;
+        
         bot.sendMessage(chatId, `
-🎉 *Welcome to Image Share Bot!* 🎉
+🎉 *Welcome ${userName}!* 🎉
 
-Send me any image and get a shareable link instantly.
+*TNEH Image Share Bot*
+Generate instant shareable links from your images.
 
-*Commands:*
-/start - Welcome message
-/help - Help guide
-/stats - Your statistics
-/website - Open website
+*What can you do?*
+• 📸 Send any image
+• 🔗 Get shareable link
+• 🌐 Share anywhere
 
-Send an image now! 📸
-        `, { parse_mode: 'Markdown' });
+*Choose an option below:* 👇
+        `, {
+            parse_mode: 'Markdown',
+            ...inlineButtons
+        });
+        
+        // কাস্টম কিবোর্ডও দেখান
+        bot.sendMessage(chatId, '✨ *Quick Actions:*', {
+            parse_mode: 'Markdown',
+            ...mainMenu
+        });
     });
     
+    // হেল্প কমান্ড
     bot.onText(/\/help/, (msg) => {
         const chatId = msg.chat.id;
         bot.sendMessage(chatId, `
-📖 *How to use:*
-1. Send me any image
-2. Wait for processing
-3. Get your shareable link
-4. Share anywhere!
+❓ *Help Guide*
 
-*Supported:* JPEG, PNG, GIF, WebP
-        `, { parse_mode: 'Markdown' });
+*How to use:*
+1️⃣ Send me any image (photo or file)
+2️⃣ Wait for upload (2-3 seconds)
+3️⃣ Get your shareable link
+4️⃣ Copy and share anywhere!
+
+*Commands:*
+/start - Main menu
+/help - This guide
+/stats - Your statistics
+/website - Open web version
+
+*Supported formats:* JPEG, PNG, GIF, WebP
+
+*Tips:* Send high-quality images for best results!
+        `, {
+            parse_mode: 'Markdown',
+            ...inlineButtons
+        });
     });
     
+    // স্ট্যাটস কমান্ড
     bot.onText(/\/stats/, (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
         const userImages = Object.values(images).filter(img => img.userId === userId);
+        const totalViews = userImages.reduce((sum, img) => sum + (img.views || 0), 0);
         
-        bot.sendMessage(chatId, `
-📊 *Your Stats:*
-Total uploads: ${userImages.length}
-Total views: ${userImages.reduce((sum, img) => sum + (img.views || 0), 0)}
-        `, { parse_mode: 'Markdown' });
+        const statsMessage = userImages.length === 0 ? 
+            `📊 *No uploads yet!*\n\nSend me an image to get started. 🚀` :
+            `
+📊 *Your Statistics*
+
+• Total Images: *${userImages.length}*
+• Total Views: *${totalViews}*
+• Average Views: *${userImages.length > 0 ? (totalViews / userImages.length).toFixed(1) : 0}*
+
+*Recent Uploads:*
+${userImages.slice(-3).reverse().map(img => `• ${new Date(img.createdAt).toLocaleDateString()}`).join('\n')}
+
+Keep sharing! 🎉
+            `;
+        
+        bot.sendMessage(chatId, statsMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📸 Upload New Image', callback_data: 'upload_guide' }],
+                    [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                ]
+            }
+        });
     });
     
+    // ওয়েবসাইট কমান্ড
     bot.onText(/\/website/, (msg) => {
         const chatId = msg.chat.id;
-        bot.sendMessage(chatId, `🌐 Website: ${BASE_URL}`);
+        bot.sendMessage(chatId, `
+🌐 *TNEH Image Share Website*
+
+${BASE_URL}
+
+*Features:*
+• Drag & drop upload
+• QR code generator
+• Image gallery
+• Shareable links
+
+Click the button below to open! 👇
+        `, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🌐 Open Website', url: BASE_URL }],
+                    [{ text: '📸 Try Bot', callback_data: 'upload_guide' }]
+                ]
+            }
+        });
     });
     
     // ফটো হ্যান্ডেল
@@ -109,8 +209,16 @@ Total views: ${userImages.reduce((sum, img) => sum + (img.views || 0), 0)}
         const userId = msg.from.id;
         const username = msg.from.username || msg.from.first_name;
         
+        // সেন্ডিং ইন্ডিকেটর
+        await bot.sendChatAction(chatId, 'upload_photo');
+        
         try {
-            await bot.sendMessage(chatId, '📤 *Uploading your image...*', { parse_mode: 'Markdown' });
+            const waitMsg = await bot.sendMessage(chatId, '⏳ *Processing your image...*', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [[{ text: '⏳ Uploading...', callback_data: 'loading' }]]
+                }
+            });
             
             const photo = msg.photo[msg.photo.length - 1];
             const file = await bot.getFile(photo.file_id);
@@ -141,25 +249,45 @@ Total views: ${userImages.reduce((sum, img) => sum + (img.views || 0), 0)}
             
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
-            await bot.sendMessage(chatId, `
-✅ *Image Uploaded Successfully!*
+            // ডিলিট ওয়েটিং মেসেজ
+            bot.deleteMessage(chatId, waitMsg.message_id);
+            
+            // সাকসেস মেসেজ বাটন সহ
+            await bot.sendPhoto(chatId, shareUrl, {
+                caption: `
+✅ *Upload Successful!*
 
 🔗 *Your Shareable Link:*
-${shareUrl}
+\`${shareUrl}\`
 
-📊 Size: ${(file.file_size / 1024).toFixed(2)} KB
+📊 *Stats:*
+• Size: ${(file.file_size / 1024).toFixed(2)} KB
+• ID: \`${imageId.slice(0, 8)}\`
 
-Click the link to view and share! 🚀
-            `, { parse_mode: 'Markdown' });
-            
-            // প্রিভিউ সেন্ড
-            await bot.sendPhoto(chatId, shareUrl, {
-                caption: `🖼️ Your shared image`
+💡 Click the link to view and share!
+                `,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔗 Copy Link', callback_data: `copy_${shareUrl}` }],
+                        [{ text: '📤 Share', callback_data: `share_${shareUrl}` }],
+                        [{ text: '📸 Upload Another', callback_data: 'upload_guide' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
             });
             
         } catch (error) {
             console.error('Bot photo error:', error);
-            await bot.sendMessage(chatId, '❌ Upload failed. Please try again.');
+            await bot.sendMessage(chatId, '❌ *Upload Failed!*\n\nPlease try again or use /start', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔄 Try Again', callback_data: 'upload_guide' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
         }
     });
     
@@ -169,11 +297,21 @@ Click the link to view and share! 🚀
         const doc = msg.document;
         
         if (!doc.mime_type || !doc.mime_type.startsWith('image/')) {
-            return bot.sendMessage(chatId, '❌ Please send an image file (JPEG, PNG, GIF)');
+            return bot.sendMessage(chatId, '❌ *Please send an image file!*\n\nSupported: JPEG, PNG, GIF, WebP', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📸 Send Image', callback_data: 'upload_guide' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
         }
         
+        await bot.sendChatAction(chatId, 'upload_document');
+        
         try {
-            await bot.sendMessage(chatId, '📤 *Uploading your image...*', { parse_mode: 'Markdown' });
+            await bot.sendMessage(chatId, '⏳ *Uploading your image...*', { parse_mode: 'Markdown' });
             
             const file = await bot.getFile(doc.file_id);
             const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`;
@@ -206,18 +344,264 @@ Click the link to view and share! 🚀
             const shareUrl = `${BASE_URL}/share/${imageId}`;
             
             await bot.sendMessage(chatId, `
-✅ *Image Uploaded Successfully!*
+✅ *Upload Successful!*
 
-🔗 *Shareable Link:*
-${shareUrl}
+🔗 *Your Shareable Link:*
+\`${shareUrl}\`
 
-📄 File: ${doc.file_name}
-📊 Size: ${(file.file_size / 1024).toFixed(2)} KB
-            `, { parse_mode: 'Markdown' });
+📄 *File:* ${doc.file_name}
+📊 *Size:* ${(file.file_size / 1024).toFixed(2)} KB
+
+*Quick Actions:* 👇
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔗 Copy Link', callback_data: `copy_${shareUrl}` }],
+                        [{ text: '🌐 Open in Browser', url: shareUrl }],
+                        [{ text: '📸 Upload More', callback_data: 'upload_guide' }]
+                    ]
+                }
+            });
             
         } catch (error) {
             console.error('Bot document error:', error);
-            await bot.sendMessage(chatId, '❌ Upload failed. Please try again.');
+            await bot.sendMessage(chatId, '❌ *Upload Failed!*\n\nPlease try again.', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔄 Retry', callback_data: 'upload_guide' }]
+                    ]
+                }
+            });
+        }
+    });
+    
+    // ========== কলব্যাক কোয়েরি হ্যান্ডেলার (বাটন ক্লিক) ==========
+    bot.on('callback_query', async (callbackQuery) => {
+        const message = callbackQuery.message;
+        const data = callbackQuery.data;
+        const chatId = message.chat.id;
+        
+        // ইউজারকে জানান যে বাটন প্রেস হয়েছে
+        bot.answerCallbackQuery(callbackQuery.id);
+        
+        if (data === 'main_menu') {
+            await bot.sendMessage(chatId, '🏠 *Main Menu*\n\nChoose an option below:', {
+                parse_mode: 'Markdown',
+                ...inlineButtons
+            });
+        }
+        
+        else if (data === 'upload_guide') {
+            await bot.sendMessage(chatId, `
+📸 *How to upload:*
+
+*Method 1:* Send me a photo directly
+*Method 2:* Send as document (original quality)
+*Method 3:* Use website for advanced features
+
+*Tips:*
+• Send high-quality images
+• Supported: JPEG, PNG, GIF, WebP
+• Max size: 10MB
+
+Ready? Send me an image now! 🚀
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🌐 Open Website', url: BASE_URL }],
+                        [{ text: '🏠 Back to Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'show_stats') {
+            const userId = callbackQuery.from.id;
+            const userImages = Object.values(images).filter(img => img.userId === userId);
+            const totalViews = userImages.reduce((sum, img) => sum + (img.views || 0), 0);
+            
+            const statsMsg = userImages.length === 0 ?
+                `📊 *No uploads yet!*\n\nSend me an image to get started. 🚀` :
+                `
+📊 *Your Statistics*
+
+• Total Images: *${userImages.length}*
+• Total Views: *${totalViews}*
+• Storage Used: *${(userImages.reduce((sum, img) => sum + (img.size || 0), 0) / 1024 / 1024).toFixed(2)} MB*
+
+*Recent Activity:*
+${userImages.slice(-5).reverse().map(img => `• ${new Date(img.createdAt).toLocaleString()}`).join('\n')}
+                `;
+            
+            await bot.sendMessage(chatId, statsMsg, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔄 Refresh', callback_data: 'show_stats' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'help_guide') {
+            await bot.sendMessage(chatId, `
+❓ *Help & Support*
+
+*Commands:*
+/start - Main menu
+/help - Help guide
+/stats - Your stats
+/website - Open website
+
+*Features:*
+• Instant shareable links
+• No registration
+• Free to use
+• Permanent storage
+
+*Need more help?* Visit our website or contact support.
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🌐 Website', url: BASE_URL }],
+                        [{ text: '📸 Try Now', callback_data: 'upload_guide' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'about_bot') {
+            await bot.sendMessage(chatId, `
+ℹ️ *About TNEH Image Share Bot*
+
+*Version:* 1.0.0
+*Developer:* TNEH
+*Platform:* Telegram + Web
+
+*Features:*
+• 📸 Instant image upload
+• 🔗 Shareable link generation
+• 📊 Usage statistics
+• 🌐 Web interface
+• 💾 Permanent storage
+
+*Website:* ${BASE_URL}
+
+Thanks for using our bot! 🎉
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '⭐ Rate Bot', callback_data: 'rate_bot' }],
+                        [{ text: '📸 Start Sharing', callback_data: 'upload_guide' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'share_bot') {
+            const botUsername = (await bot.getMe()).username;
+            await bot.sendMessage(chatId, `
+🔗 *Share This Bot*
+
+Invite your friends!
+
+*Bot Link:*
+\`https://t.me/${botUsername}\`
+
+*Website:*
+${BASE_URL}
+
+Share and earn more features! 🎁
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📤 Share Bot', switch_inline_query: 'Check out this awesome bot!' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'rate_bot') {
+            await bot.sendMessage(chatId, `
+⭐ *Rate Our Bot*
+
+Loving our bot? Rate us 5 stars!
+
+Your feedback helps us improve! 💪
+
+*Suggestions?* Send us your feedback.
+            `, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '⭐ ⭐ ⭐ ⭐ ⭐', callback_data: 'rate_5' }],
+                        [{ text: '📝 Send Feedback', callback_data: 'feedback' }],
+                        [{ text: '🏠 Main Menu', callback_data: 'main_menu' }]
+                    ]
+                }
+            });
+        }
+        
+        else if (data === 'rate_5') {
+            await bot.sendMessage(chatId, '🎉 *Thank you for 5 stars!*\n\nWe appreciate your support! ❤️', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [[{ text: '🏠 Main Menu', callback_data: 'main_menu' }]]
+                }
+            });
+        }
+        
+        else if (data.startsWith('copy_')) {
+            const url = data.replace('copy_', '');
+            await bot.sendMessage(chatId, `🔗 *Link ready to copy!*\n\n\`${url}\``, {
+                parse_mode: 'Markdown'
+            });
+        }
+        
+        else if (data === 'loading') {
+            await bot.sendMessage(chatId, '⏳ *Please wait while your image is being processed...*', {
+                parse_mode: 'Markdown'
+            });
+        }
+    });
+    
+    // টেক্সট মেসেজ হ্যান্ডেল (কিবোর্ড বাটনের জন্য)
+    bot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
+        const text = msg.text;
+        
+        // ইমেজ না হলে টেক্সট চেক করুন
+        if (!msg.photo && !msg.document && text) {
+            if (text === '📸 Upload Image') {
+                await bot.sendMessage(chatId, '📸 *Send me your image now!*\n\nJust tap the attachment button 📎 and select a photo.', {
+                    parse_mode: 'Markdown'
+                });
+            }
+            else if (text === '📊 My Stats') {
+                bot.emit('text', { ...msg, text: '/stats' });
+            }
+            else if (text === '🌐 Open Website') {
+                bot.emit('text', { ...msg, text: '/website' });
+            }
+            else if (text === '❓ Help') {
+                bot.emit('text', { ...msg, text: '/help' });
+            }
+            else if (text === 'ℹ️ About') {
+                bot.emit('callback_query', {
+                    message: msg,
+                    data: 'about_bot'
+                });
+            }
         }
     });
     
@@ -230,8 +614,6 @@ ${shareUrl}
 }
 
 // ========== API এন্ডপয়েন্ট ==========
-
-// হেলথ চেক
 app.get('/health', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -240,17 +622,13 @@ app.get('/health', (req, res) => {
     });
 });
 
-// ওয়েবসাইট হোম পেজ
 app.get('/', (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// ইমেজ আপলোড API
 app.post('/api/upload', upload.single('image'), (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No image uploaded' });
-        }
+        if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
         
         const imageId = uuidv4();
         const extension = path.extname(req.file.originalname);
@@ -271,81 +649,22 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
         };
         
         fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
-        
         const shareUrl = `${BASE_URL}/share/${imageId}`;
         
-        res.json({
-            success: true,
-            url: shareUrl,
-            imageUrl: shareUrl,
-            id: imageId
-        });
-        
+        res.json({ success: true, url: shareUrl, id: imageId });
     } catch (error) {
-        console.error('API upload error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// বেস64 আপলোড
-app.post('/api/upload-base64', (req, res) => {
-    try {
-        const { image } = req.body;
-        if (!image) {
-            return res.status(400).json({ error: 'No image provided' });
-        }
-        
-        const imageId = uuidv4();
-        const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-        const ext = matches[1].split('/')[1];
-        const filename = `${imageId}.${ext}`;
-        
-        images[imageId] = {
-            id: imageId,
-            filename: filename,
-            dataUrl: image,
-            mimeType: matches[1],
-            views: 0,
-            createdAt: new Date().toISOString(),
-            source: 'api'
-        };
-        
-        fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
-        
-        const shareUrl = `${BASE_URL}/share/${imageId}`;
-        
-        res.json({
-            success: true,
-            url: shareUrl,
-            id: imageId
-        });
-        
-    } catch (error) {
-        console.error('Base64 upload error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// শেয়ার লিংক ভিউ
 app.get('/share/:id', (req, res) => {
     const { id } = req.params;
     const image = images[id];
     
     if (!image) {
-        return res.status(404).send(`
-            <!DOCTYPE html>
-            <html>
-            <head><title>Image Not Found</title></head>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1>❌ Image Not Found</h1>
-                <p>The image doesn't exist or has been removed.</p>
-                <a href="/">Go to Homepage</a>
-            </body>
-            </html>
-        `);
+        return res.status(404).send('<h1>Image Not Found</h1>');
     }
     
-    // ভিউ আপডেট
     image.views = (image.views || 0) + 1;
     fs.writeFileSync(dbFile, JSON.stringify(images, null, 2));
     
@@ -353,8 +672,7 @@ app.get('/share/:id', (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Shared Image - ${image.originalName || 'Image'}</title>
-            <meta property="og:image" content="${image.dataUrl}">
+            <title>Shared Image</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
                 body {
@@ -386,6 +704,10 @@ app.get('/share/:id', (req, res) => {
                     border-radius: 8px;
                     cursor: pointer;
                     margin-top: 20px;
+                    font-size: 16px;
+                }
+                button:hover {
+                    background: #5a67d8;
                 }
             </style>
         </head>
@@ -398,7 +720,7 @@ app.get('/share/:id', (req, res) => {
             <script>
                 function copyLink() {
                     navigator.clipboard.writeText(window.location.href);
-                    alert('Link copied!');
+                    alert('✅ Link copied to clipboard!');
                 }
             </script>
         </body>
@@ -406,15 +728,15 @@ app.get('/share/:id', (req, res) => {
     `);
 });
 
-// সব ইমেজ লিস্ট
 app.get('/api/images', (req, res) => {
     res.json({ images: Object.values(images) });
 });
 
-// ========== সার্ভার স্টার্ট ==========
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`📍 URL: http://localhost:${PORT}`);
-    console.log(`🤖 Bot status: ${bot ? 'Running' : 'Stopped'}`);
+    console.log(`🤖 Bot: @TNEH_Image_Share_Bot`);
 });
+
+export default app;
