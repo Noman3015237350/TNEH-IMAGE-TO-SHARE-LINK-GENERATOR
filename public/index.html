@@ -3,6 +3,7 @@
 <head>
     <title>Image Share Link Generator</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -26,6 +27,7 @@
             text-align: center;
             margin-bottom: 10px;
             color: #333;
+            font-size: 28px;
         }
         .subtitle {
             text-align: center;
@@ -108,7 +110,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📸 Image Share Link Generator</h1>
+        <h1>📸 TNEH Image Share Link Generator</h1>
         <div class="subtitle">Upload an image and get a shareable link</div>
         
         <div id="dropZone">
@@ -171,7 +173,8 @@
             formData.append('image', file);
             
             try {
-                const response = await fetch('/upload', {
+                // সঠিক API endpoint এ কল করছি
+                const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData
                 });
@@ -185,15 +188,17 @@
                         <strong>✅ Shareable Link Created!</strong><br><br>
                         <a href="${data.url}" target="_blank">${data.url}</a><br><br>
                         <button onclick="copyToClipboard('${data.url}')">📋 Copy Link</button>
-                        <button onclick="downloadQR('${data.url}')">📱 Generate QR Code</button>
+                        <button onclick="window.open('${data.url}', '_blank')">🔗 Open Link</button>
                     `;
                 } else {
-                    throw new Error(data.error);
+                    throw new Error(data.error || 'Upload failed');
                 }
             } catch (error) {
+                console.error('Upload error:', error);
                 result.style.display = 'block';
                 result.className = 'result error';
-                result.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+                result.innerHTML = `<strong>❌ Error:</strong> ${error.message}<br><br>
+                <button onclick="location.reload()">🔄 Try Again</button>`;
             } finally {
                 loading.style.display = 'none';
             }
@@ -201,12 +206,7 @@
 
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
-            alert('Link copied to clipboard!');
-        }
-
-        function downloadQR(url) {
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
-            window.open(qrUrl, '_blank');
+            alert('✅ Link copied to clipboard!');
         }
     </script>
 </body>
