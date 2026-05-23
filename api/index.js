@@ -51,7 +51,7 @@ import fetch from 'node-fetch';
 const { default: TelegramBot } = await import('node-telegram-bot-api');
 
 let bot;
-let telegramChannelId = '-1001234567890'; // আপনার চ্যানেলের আইডি (নিচে সেটাপ দেখুন)
+let telegramChannelId = '-1003465154233'; // আপনার চ্যানেলের আইডি (নিচে সেটাপ দেখুন)
 
 try {
     bot = new TelegramBot(BOT_TOKEN, { 
